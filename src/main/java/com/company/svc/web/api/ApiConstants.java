@@ -1,4 +1,4 @@
-package com.company.svc.web;
+package com.company.svc.web.api;
 
 import lombok.Data;
 

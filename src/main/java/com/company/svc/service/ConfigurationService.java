@@ -25,10 +25,14 @@ public class ConfigurationService {
 
     private final ConfigurationRepository configurationRepository;
     private final ConfigurationEventPublisher eventPublisher;
+    private final RedisCacheService cacheService;
 
-    public ConfigurationService(ConfigurationRepository configurationRepository, ConfigurationEventPublisher eventPublisher) {
+    public ConfigurationService(ConfigurationRepository configurationRepository,
+                                ConfigurationEventPublisher eventPublisher,
+                                RedisCacheService cacheService) {
         this.configurationRepository = configurationRepository;
         this.eventPublisher = eventPublisher;
+        this.cacheService = cacheService;
     }
 
     public Configuration create(ConfigurationCreateRequest request) {
@@ -38,6 +42,8 @@ public class ConfigurationService {
         Configuration persistedConfiguration = configurationRepository.save(configuration);
         logger.info("Configuration created with ID [{}] ", persistedConfiguration.getId());
 
+        cacheService.put(persistedConfiguration);
+
         ConfigurationEvent configurationEvent = ConfigurationMapper.mapToConfigurationEvent(persistedConfiguration, EventType.CREATED);
         eventPublisher.publish(configurationEvent);
 
@@ -46,11 +52,21 @@ public class ConfigurationService {
 
     public Configuration getById(UUID configurationId) {
 
-        return configurationRepository.findById(configurationId)
+        Configuration cached = cacheService.get(configurationId);
+        if (cached != null) {
+            return cached;
+        }
+
+        Configuration configuration = configurationRepository.findById(configurationId)
                 .orElseThrow(() -> {
                     logger.warn("Configuration with ID [{}] not found.", configurationId);
-                    return new ResourceNotFoundException(String.format("Configuration with ID [%s] not found.", configurationId));
+                    return new ResourceNotFoundException(
+                            String.format("Configuration with ID [%s] not found.", configurationId));
                 });
+
+        cacheService.put(configuration);
+
+        return configuration;
     }
 
     public List<Configuration> getAll() {
@@ -119,6 +135,8 @@ public class ConfigurationService {
         Configuration updatedConfiguration = configurationRepository.save(configuration);
         logger.info("Configuration updated with ID [{}] ", updatedConfiguration.getId());
 
+        cacheService.put(updatedConfiguration);
+
         ConfigurationEvent configurationEvent = ConfigurationMapper.mapToConfigurationEvent(updatedConfiguration, EventType.UPDATED);
         eventPublisher.publish(configurationEvent);
 
@@ -134,6 +152,8 @@ public class ConfigurationService {
         Configuration updatedConfiguration = configurationRepository.save(configuration);
         logger.info("Configuration partially updated with ID [{}] ", updatedConfiguration.getId());
 
+        cacheService.put(updatedConfiguration);
+
         ConfigurationEvent configurationEvent = ConfigurationMapper.mapToConfigurationEvent(updatedConfiguration, EventType.UPDATED);
         eventPublisher.publish(configurationEvent);
 
@@ -145,6 +165,8 @@ public class ConfigurationService {
         Configuration configuration = getById(configurationId);
         configurationRepository.delete(configuration);
         logger.info("Configuration with ID [{}] has been deleted.", configurationId);
+
+        cacheService.evict(configurationId);
 
         ConfigurationEvent configurationEvent = ConfigurationMapper.mapToConfigurationEvent(configuration, EventType.DELETED);
         eventPublisher.publish(configurationEvent);

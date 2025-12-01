@@ -1,4 +1,4 @@
-package com.company.svc.config;
+package com.company.svc.config.kafka;
 
 import com.company.svc.event.ConfigurationEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;

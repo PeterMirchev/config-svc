@@ -3,21 +3,17 @@ package com.company.svc.web;
 import com.company.svc.model.Configuration;
 import com.company.svc.service.ConfigurationService;
 import com.company.svc.util.ConfigurationMapper;
+import com.company.svc.web.api.ConfigurationApi;
 import com.company.svc.web.dto.*;
-import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
 
-import static com.company.svc.web.ApiConstants.EndpointPaths.CONFIGURATIONS;
-import static com.company.svc.web.ApiConstants.Versions.V1;
-
 @RestController
-@RequestMapping(V1 + CONFIGURATIONS)
-public class ConfigurationController {
+public class ConfigurationController implements ConfigurationApi {
 
     private final ConfigurationService configurationService;
 
@@ -25,8 +21,8 @@ public class ConfigurationController {
         this.configurationService = configurationService;
     }
 
-    @PostMapping
-    public ResponseEntity<ConfigurationResponse> createConfiguration(@RequestBody @Valid ConfigurationCreateRequest request) {
+    @Override
+    public ResponseEntity<ConfigurationResponse> createConfiguration(ConfigurationCreateRequest request) {
 
         Configuration configuration = configurationService.create(request);
         ConfigurationResponse response = ConfigurationMapper.mapToResponse(configuration);
@@ -34,40 +30,35 @@ public class ConfigurationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PutMapping("/{configurationId}")
-    public ResponseEntity<ConfigurationResponse> updateConfiguration(@RequestBody @Valid ConfigurationUpdateRequest request,
-                                                                     @PathVariable UUID configurationId) {
+    @Override
+    public ResponseEntity<ConfigurationResponse> updateConfiguration(ConfigurationUpdateRequest request, UUID configurationId) {
 
         Configuration configuration = configurationService.update(request, configurationId);
         ConfigurationResponse response = ConfigurationMapper.mapToResponse(configuration);
 
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.ok(response);
     }
 
-    @PatchMapping("/{configurationId}")
-    public ResponseEntity<ConfigurationResponse> patchConfiguration(@RequestBody ConfigurationPatchRequest request,
-                                                                    @PathVariable UUID configurationId) {
+    @Override
+    public ResponseEntity<ConfigurationResponse> patchConfiguration(ConfigurationPatchRequest request, UUID configurationId) {
 
         Configuration configuration = configurationService.patch(request, configurationId);
         ConfigurationResponse response = ConfigurationMapper.mapToResponse(configuration);
 
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{configurationId}")
-    public ResponseEntity<ConfigurationResponse> getConfiguration(@PathVariable UUID configurationId) {
+    @Override
+    public ResponseEntity<ConfigurationResponse> getConfiguration(UUID configurationId) {
 
         Configuration configuration = configurationService.getById(configurationId);
         ConfigurationResponse response = ConfigurationMapper.mapToResponse(configuration);
 
-        return ResponseEntity.status(HttpStatus.OK).body(response);
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping
-    public ResponseEntity<ConfigurationCollectionResponse> getConfigurations(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String application,
-            @RequestParam(required = false) String environment) {
+    @Override
+    public ResponseEntity<ConfigurationCollectionResponse> getConfigurations(String name, String application, String environment) {
 
         List<Configuration> configurations = configurationService.findConfigurations(name, application, environment);
         ConfigurationCollectionResponse response = ConfigurationMapper.mapToCollectionResponse(configurations);
@@ -75,8 +66,8 @@ public class ConfigurationController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{configurationId}")
-    public ResponseEntity<Void> deleteConfiguration(@PathVariable UUID configurationId) {
+    @Override
+    public ResponseEntity<Void> deleteConfiguration(UUID configurationId) {
 
         configurationService.delete(configurationId);
         return ResponseEntity.noContent().build();
