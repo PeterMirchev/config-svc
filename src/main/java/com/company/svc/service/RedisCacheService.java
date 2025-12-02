@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -31,7 +32,13 @@ public class RedisCacheService {
         try {
             String json = objectMapper.writeValueAsString(configuration);
 
-            redisTemplate.opsForValue().set(key(configuration.getId()), json, DEFAULT_TTL);
+            try {
+                redisTemplate.opsForValue().set(key(configuration.getId()), json, DEFAULT_TTL);
+            } catch (RedisSystemException e) {
+                logger.warn("Redis unavailable while storing configuration [id={}]. Proceeding without cache.",
+                        configuration.getId(), e);
+                return;
+            }
 
             logger.info("Stored configuration in Redis [id={}, name={}, app={}, env={}]",
                     configuration.getId(), configuration.getName(),
@@ -44,8 +51,15 @@ public class RedisCacheService {
     }
 
     public Configuration get(UUID configurationId) {
-
-        String json = redisTemplate.opsForValue().get(key(configurationId));
+        String json;
+        try {
+            json = redisTemplate.opsForValue().get(key(configurationId));
+        } catch (RedisSystemException e) {
+            // Redis down → degrade to no-cache
+            logger.warn("Redis unavailable while reading configuration [id={}]. Returning cache miss.",
+                    configurationId, e);
+            return null;
+        }
 
         if (json == null) {
             logger.info("Cache miss for configuration id [{}]", configurationId);
@@ -65,9 +79,13 @@ public class RedisCacheService {
     }
 
     public void evict(UUID configurationId) {
-
         logger.info("Evicting configuration from Redis [id={}]", configurationId);
-        redisTemplate.delete(key(configurationId));
+        try {
+            redisTemplate.delete(key(configurationId));
+        } catch (RedisSystemException e) {
+            // If Redis is down, nothing to evict — ignore
+            logger.warn("Redis unavailable while evicting configuration [id={}]. Ignoring.", configurationId, e);
+        }
     }
 
     private String key(UUID configurationId) {

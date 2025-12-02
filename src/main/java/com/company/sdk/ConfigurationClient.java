@@ -35,7 +35,7 @@ public class ConfigurationClient {
 
         HttpEntity<ConfigurationPatchRequest> entity = new HttpEntity<>(request);
         ResponseEntity<ConfigurationResponse> response = restTemplate.exchange(
-                baseUrl + configurationId,
+                baseUrl + "/" + configurationId,
                 HttpMethod.PATCH,
                 entity,
                 ConfigurationResponse.class
@@ -52,14 +52,21 @@ public class ConfigurationClient {
     public ConfigurationCollectionResponse getConfigurations(String name, String application, String environment) {
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl + "/");
-        if (name != null) builder.queryParam("name", name);
-        if (application != null) builder.queryParam("application", application);
-        if (environment != null) builder.queryParam("environment", environment);
+        if (name != null) {
+            builder.queryParam("name", name);
+        }
+        if (application != null) {
+            builder.queryParam("application", application);
+        }
+        if (environment != null) {
+            builder.queryParam("environment", environment);
+        }
 
         return restTemplate.getForObject(builder.toUriString(), ConfigurationCollectionResponse.class);
     }
 
     public void deleteConfiguration(UUID configurationId) {
+
         restTemplate.delete(baseUrl + "/" + configurationId);
     }
 }
